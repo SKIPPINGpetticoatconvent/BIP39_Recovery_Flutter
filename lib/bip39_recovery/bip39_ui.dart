@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:bip39_recovery_flutter/bip39_recovery/theme.dart';
 import 'package:bip39_recovery_flutter/bip39_recovery/bip39_logic.dart';
 
@@ -129,18 +131,21 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
     T = (key) => languages[_currentLang]![key] ?? key;
   }
 
-  // 生成编号化助记词显示文本
-  String _getNumberedMnemonicText() {
-    if (_recoveredWords.isEmpty) {
-      return '';
+  void _exitApp() {
+    // 跨平台退出方法
+    if (Platform.isAndroid) {
+      // Android: 使用SystemNavigator.pop()或exit(0)
+      SystemNavigator.pop();
+    } else if (Platform.isIOS) {
+      // iOS: 使用SystemNavigator.pop()
+      SystemNavigator.pop();
+    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // 桌面平台: 使用exit(0)
+      exit(0);
+    } else {
+      // 其他平台回退方案
+      Navigator.of(context).pop();
     }
-    
-    List<String> numberedWords = [];
-    for (int i = 0; i < _recoveredWords.length; i++) {
-      numberedWords.add('${i + 1}. ${_recoveredWords[i]}');
-    }
-    
-    return numberedWords.join('\n');
   }
 
   // 构建编号化助记词容器列表
@@ -198,7 +203,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
           decoration: BoxDecoration(
             border: Border.all(color: AppTheme.success),
             borderRadius: BorderRadius.circular(6),
-            color: AppTheme.success.withOpacity(0.1),
+            color: AppTheme.success.withValues(alpha: 0.1),
           ),
           child: Text(
             '${index + 1}. ${_recoveredWords[index]}',
@@ -654,7 +659,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(), // Or exit the app
+              onPressed: () => _exitApp(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.secondary,
                 foregroundColor: Colors.white,
