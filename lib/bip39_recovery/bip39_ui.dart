@@ -129,6 +129,91 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
     T = (key) => languages[_currentLang]![key] ?? key;
   }
 
+  // 生成编号化助记词显示文本
+  String _getNumberedMnemonicText() {
+    if (_recoveredWords.isEmpty) {
+      return '';
+    }
+    
+    List<String> numberedWords = [];
+    for (int i = 0; i < _recoveredWords.length; i++) {
+      numberedWords.add('${i + 1}. ${_recoveredWords[i]}');
+    }
+    
+    return numberedWords.join('\n');
+  }
+
+  // 构建编号化助记词容器列表
+  Widget _buildNumberedMnemonicContainers() {
+    if (_recoveredWords.isEmpty) {
+      return const Text(
+        '',
+        style: TextStyle(fontFamily: 'Courier New, monospace'),
+      );
+    }
+    
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _recoveredWords.length,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.border),
+            borderRadius: BorderRadius.circular(4),
+            color: AppTheme.contentBackground,
+          ),
+          child: Text(
+            '${index + 1}. ${_recoveredWords[index]}',
+            style: const TextStyle(
+              fontFamily: 'Courier New, monospace',
+              fontSize: 16,
+              color: AppTheme.text,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 构建成功状态的编号化助记词容器列表
+  Widget _buildSuccessMnemonicContainers() {
+    if (_recoveredWords.isEmpty) {
+      return const Text(
+        '',
+        style: TextStyle(fontFamily: 'Courier New, monospace', fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.success),
+      );
+    }
+    
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _recoveredWords.length,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.success),
+            borderRadius: BorderRadius.circular(6),
+            color: AppTheme.success.withOpacity(0.1),
+          ),
+          child: Text(
+            '${index + 1}. ${_recoveredWords[index]}',
+            style: TextStyle(
+              fontFamily: 'Courier New, monospace',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.success,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _setLanguage(String langCode) {
     setState(() {
       _currentLang = langCode;
@@ -395,7 +480,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
           ),
           const SizedBox(height: 5),
           Container(
-            height: 80,
+            height: 200,
             decoration: BoxDecoration(
               border: Border.all(color: AppTheme.border),
               borderRadius: BorderRadius.circular(6),
@@ -403,10 +488,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
-              child: Text(
-                _recoveredWords.join(' '),
-                style: const TextStyle(fontFamily: 'Courier New, monospace'),
-              ),
+              child: _buildNumberedMnemonicContainers(),
             ),
           ),
         ],
@@ -525,7 +607,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
           ),
           const SizedBox(height: 10),
           Container(
-            height: 120,
+            height: 300,
             width: double.infinity,
             decoration: BoxDecoration(
               border: Border.all(color: AppTheme.border),
@@ -534,10 +616,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
-              child: Text(
-                _recoveredWords.join(' '),
-                style: const TextStyle(fontFamily: 'Courier New, monospace', fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.success),
-              ),
+              child: _buildSuccessMnemonicContainers(),
             ),
           ),
           const SizedBox(height: 20),
