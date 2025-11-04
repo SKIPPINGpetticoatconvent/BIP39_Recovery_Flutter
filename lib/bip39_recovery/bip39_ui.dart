@@ -42,6 +42,11 @@ Map<String, Map<String, String>> languages = {
     "security_note": "SECURITY NOTE: Please close this window after you have secured your phrase.",
     "restart_button": "Restart",
     "quit_button": "Quit",
+    "undo_number_button": "Undo Last",
+    "clear_current_button": "Clear Current",
+    "rollback_word_button": "Rollback Word",
+    "nothing_to_undo": "Nothing to undo.",
+    "rolled_back_to_word": "Rolled back to word {index}.",
   },
   "zh": {
     "window_title": "离线BIP39助记词恢复工具",
@@ -79,6 +84,11 @@ Map<String, Map<String, String>> languages = {
     "security_note": "【安全提示】在您安全备份好助记词后，请关闭本窗口。",
     "restart_button": "重新开始",
     "quit_button": "退出",
+    "undo_number_button": "撤销上一个",
+    "clear_current_button": "清空当前",
+    "rollback_word_button": "回退上一个单词",
+    "nothing_to_undo": "没有可撤销的输入。",
+    "rolled_back_to_word": "已回退到第 {index} 个单词。",
   },
 };
 
@@ -99,6 +109,8 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
   List<String> _recoveredWords = [];
   int _currentWordSum = 0;
   List<int> _currentWordInputs = [];
+  // 历史输入，每确认一个单词就记录一次，支持回退
+  final List<List<int>> _inputsHistory = [];
   final PageController _pageController = PageController();
   final TextEditingController _numberEntryController = TextEditingController();
   final FocusNode _numberEntryFocus = FocusNode();
@@ -248,13 +260,15 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(40.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildLanguageSwitcher(),
-                const SizedBox(height: 20),
-                child,
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildLanguageSwitcher(),
+                  const SizedBox(height: 20),
+                  child,
+                ],
+              ),
             ),
           ),
         ),
@@ -302,6 +316,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       _mnemonicLength = length;
       _currentWordIndex = 0;
       _recoveredWords = [];
+      _inputsHistory.clear();
       _resetCurrentWord();
     });
     _pageController.jumpToPage(1); // Navigate to recovery page
@@ -451,8 +466,33 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
             ],
           ),
           const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _undoLastNumber,
+                icon: const Icon(Icons.undo, size: 18),
+                label: Text(T("undo_number_button")),
+              ),
+              OutlinedButton.icon(
+                onPressed: _clearCurrentInputs,
+                icon: const Icon(Icons.clear, size: 18),
+                label: Text(T("clear_current_button")),
+              ),
+              OutlinedButton.icon(
+                onPressed: _rollbackPreviousWord,
+                icon: const Icon(Icons.reply, size: 18),
+                label: Text(T("rollback_word_button")),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
-            T("entered_numbers_label").replaceFirst('{numbers}', _currentWordInputs.map((e) => e.toString()).join(', ')),
+            T("entered_numbers_label").replaceFirst('{numbers}', (() {
+              final sorted = [..._currentWordInputs]..sort();
+              return sorted.map((e) => e.toString()).join(', ');
+            })()),
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 10),
@@ -542,7 +582,6 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       } else {
         setState(() {
           _currentWordInputs.add(num);
-          _currentWordInputs.sort(); // Keep inputs sorted for display
           _currentWordSum += num;
         });
         // 重新聚焦以保持连续输入的便利性
@@ -569,6 +608,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
     if (_bip39Logic.wordlist != null && wordIndex >= 0 && wordIndex < _bip39Logic.wordlist!.length) {
       String word = _bip39Logic.wordlist![wordIndex];
       setState(() {
+        _inputsHistory.add(List<int>.from(_currentWordInputs));
         _recoveredWords.add(word);
         _currentWordIndex++;
       });
@@ -581,6 +621,43 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
     } else {
       _showMessage('error', T("sum_error_title"), T("sum_error_message"));
     }
+  }
+
+  void _undoLastNumber() {
+    if (_currentWordInputs.isEmpty) {
+      _showMessage('warning', T('invalid_input_title'), T('nothing_to_undo'));
+      return;
+    }
+    setState(() {
+      final removed = _currentWordInputs.removeLast();
+      _currentWordSum -= removed;
+    });
+    _numberEntryFocus.requestFocus();
+  }
+
+  void _clearCurrentInputs() {
+    setState(() {
+      _currentWordInputs.clear();
+      _currentWordSum = 0;
+    });
+    _numberEntryFocus.requestFocus();
+  }
+
+  void _rollbackPreviousWord() {
+    if (_currentWordIndex <= 0 || _recoveredWords.isEmpty || _inputsHistory.isEmpty) {
+      return;
+    }
+    setState(() {
+      _recoveredWords.removeLast();
+      final restored = _inputsHistory.removeLast();
+      _currentWordIndex--;
+      _currentWordInputs = List<int>.from(restored);
+      _currentWordSum = _currentWordInputs.fold(0, (a, b) => a + b);
+    });
+    _showMessage('info', 'OK', T('rolled_back_to_word').replaceFirst('{index}', (_currentWordIndex + 1).toString()));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _numberEntryFocus.requestFocus();
+    });
   }
 
   void _showFinalResult() {
@@ -643,6 +720,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
                   _mnemonicLength = 0;
                   _currentWordIndex = 0;
                   _recoveredWords = [];
+                  _inputsHistory.clear();
                   _resetCurrentWord();
                 });
               },
