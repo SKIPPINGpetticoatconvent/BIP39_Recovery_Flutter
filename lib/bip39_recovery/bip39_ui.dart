@@ -326,7 +326,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       _inputsHistory.clear();
       _resetCurrentWord();
     });
-    _pageController.jumpToPage(2); // Navigate to recovery page (now page 2)
+    _pageController.jumpToPage(3); // Navigate to recovery page (page 3)
     // 聚焦到输入框以开始输入
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _numberEntryFocus.requestFocus();
@@ -338,7 +338,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       _is2048Mode = is2048Mode;
       _bip39Logic.setMode(is2048Mode);
     });
-    _pageController.jumpToPage(1); // Navigate to length selection page
+    _pageController.jumpToPage(2); // Navigate to length selection page
   }
 
   void _resetCurrentWord() {
@@ -487,6 +487,20 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
                   child: const Text("返回 / Back"),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 120,
+                child: ElevatedButton(
+                  onPressed: () => _pageController.jumpToPage(3), // Skip to recovery page
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 45),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("跳过"),
                 ),
               ),
             ],
@@ -665,7 +679,9 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
     if (_currentWordSum == 0) {
       return T("status_waiting");
     }
-    int wordIndex = _currentWordSum - 1;
+
+    int wordIndex = _currentWordSum;  // 直接使用总和作为词表索引
+
     if (_bip39Logic.wordlist != null && wordIndex >= 0 && wordIndex < _bip39Logic.wordlist!.length) {
       String word = _bip39Logic.wordlist![wordIndex];
       return T("status_valid_word").replaceFirst('{sum}', _currentWordSum.toString()).replaceFirst('{index}', (wordIndex + 1).toString()).replaceFirst('{word}', word);
@@ -673,6 +689,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       return T("status_invalid_index").replaceFirst('{sum}', _currentWordSum.toString());
     }
   }
+
 
   void _addNumber() {
     String numStr = _numberEntryController.text.trim();
@@ -724,7 +741,9 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       return;
     }
 
-    int wordIndex = _currentWordSum - 1;
+    // 直接使用累加和作为词表索引（PDF文档中的索引直接对应词表索引）
+    int wordIndex = _currentWordSum;
+
     if (_bip39Logic.wordlist != null && wordIndex >= 0 && wordIndex < _bip39Logic.wordlist!.length) {
       String word = _bip39Logic.wordlist![wordIndex];
       setState(() {
@@ -781,8 +800,8 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
   }
 
   void _showFinalResult() {
-    // Navigate to result page
-    _pageController.jumpToPage(2);
+    // Navigate to result page (page 4)
+    _pageController.jumpToPage(4);
   }
 
   Widget _buildResultPage() {

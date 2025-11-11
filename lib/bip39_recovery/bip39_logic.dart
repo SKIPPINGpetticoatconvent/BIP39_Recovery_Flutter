@@ -20,6 +20,8 @@ class Bip39Logic {
 
   Set<int> get validInputNumbers => _is2048Mode ? validInputNumbers2048 : validInputNumbers1024;
 
+  int get maxSum => _is2048Mode ? 4095 : 1023; // 2^12-1 = 4095, 2^10-1 = 1023
+
   Future<List<String>?> loadWordlist() async {
     if (_wordlist != null) {
       return _wordlist;
