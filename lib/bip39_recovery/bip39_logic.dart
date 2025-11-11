@@ -2,12 +2,23 @@ import 'package:flutter/services.dart' show rootBundle;
 
 class Bip39Logic {
   static const String wordlistPath = 'lib/bip39_recovery/wordlists/english.txt';
-  static const Set<int> validInputNumbers = {
+  static const Set<int> validInputNumbers1024 = {
     1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024
+  };
+  static const Set<int> validInputNumbers2048 = {
+    1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048
   };
 
   List<String>? _wordlist;
   List<String>? get wordlist => _wordlist; // Public getter for _wordlist
+  bool _is2048Mode = false;
+  bool get is2048Mode => _is2048Mode;
+
+  void setMode(bool is2048Mode) {
+    _is2048Mode = is2048Mode;
+  }
+
+  Set<int> get validInputNumbers => _is2048Mode ? validInputNumbers2048 : validInputNumbers1024;
 
   Future<List<String>?> loadWordlist() async {
     if (_wordlist != null) {
