@@ -9,6 +9,9 @@ Map<String, Map<String, String>> languages = {
   "en": {
     "window_title": "Offline BIP39 Mnemonic Recovery Tool",
     "welcome_header": "BIP39 Mnemonic Recovery",
+    "select_mode_prompt": "Please select the recovery mode:",
+    "1024_mode": "1024 Mode",
+    "2048_mode": "2048 Mode",
     "select_length_prompt": "Please select the length of your seed phrase:",
     "12_words": "12 Words",
     "18_words": "18 Words",
@@ -31,7 +34,7 @@ Map<String, Map<String, String>> languages = {
     "recovered_words_header": "Recovered Words so far:",
     "invalid_input_title": "Invalid Input",
     "invalid_input_int_warning": "Please enter a valid whole number.",
-    "invalid_input_power_of_2_warning": "Please enter a valid power of 2 (1, 2, 4, ..., 1024).",
+    "invalid_input_power_of_2_warning": "Please enter a valid power of 2 (1, 2, 4, ..., 1024, 2048 in 2048 mode).",
     "duplicate_input_warning": "The number {num} has already been added for this word.",
     "no_input_title": "No Input",
     "no_input_warning": "Please add at least one number for this word.",
@@ -51,6 +54,9 @@ Map<String, Map<String, String>> languages = {
   "zh": {
     "window_title": "离线BIP39助记词恢复工具",
     "welcome_header": "BIP39 助记词恢复",
+    "select_mode_prompt": "请选择恢复模式：",
+    "1024_mode": "1024模式",
+    "2048_mode": "2048模式",
     "select_length_prompt": "请选择您的助记词短语长度：",
     "12_words": "12个单词",
     "18_words": "18个单词",
@@ -73,7 +79,7 @@ Map<String, Map<String, String>> languages = {
     "recovered_words_header": "已恢复的单词:",
     "invalid_input_title": "无效输入",
     "invalid_input_int_warning": "请输入一个有效的整数。",
-    "invalid_input_power_of_2_warning": "请输入一个有效的2的幂（1, 2, 4, ..., 1024）。",
+    "invalid_input_power_of_2_warning": "请输入一个有效的2的幂（1, 2, 4, ..., 1024，在2048模式下包括2048）。",
     "duplicate_input_warning": "数字 {num} 已经为这个单词添加过了。",
     "no_input_title": "没有输入",
     "no_input_warning": "请至少为这个单词添加一个数字。",
@@ -104,6 +110,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
   String _currentLang = "zh"; // Default language
   late Function(String) T;
 
+  bool _is2048Mode = false;
   int _mnemonicLength = 0;
   int _currentWordIndex = 0;
   List<String> _recoveredWords = [];
@@ -319,11 +326,19 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       _inputsHistory.clear();
       _resetCurrentWord();
     });
-    _pageController.jumpToPage(1); // Navigate to recovery page
+    _pageController.jumpToPage(3); // Navigate to recovery page (page 3)
     // 聚焦到输入框以开始输入
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _numberEntryFocus.requestFocus();
     });
+  }
+
+  void _setMode(bool is2048Mode) {
+    setState(() {
+      _is2048Mode = is2048Mode;
+      _bip39Logic.setMode(is2048Mode);
+    });
+    _pageController.jumpToPage(2); // Navigate to length selection page
   }
 
   void _resetCurrentWord() {
@@ -350,6 +365,8 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
         physics: const NeverScrollableScrollPhysics(), // Disable swipe
         children: [
           _buildWelcomePage(),
+          _buildModeSelectionPage(),
+          _buildLengthSelectionPage(),
           _buildRecoveryPage(),
           _buildResultPage(),
         ],
@@ -371,20 +388,6 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
-          Text(
-            T("select_length_prompt"),
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          _buildLengthButton(T("12_words"), 12),
-          const SizedBox(height: 10),
-          _buildLengthButton(T("18_words"), 18),
-          const SizedBox(height: 10),
-          _buildLengthButton(T("24_words"), 24),
           const SizedBox(height: 40),
           Text(
             T("offline_warning"),
@@ -393,7 +396,134 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 40),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _pageController.jumpToPage(1), // Go to mode selection
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 50),
+                textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text("开始恢复 / Start Recovery"),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModeSelectionPage() {
+    return _buildPageLayout(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            T("select_mode_prompt"),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.text,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 30),
+          _buildModeButton(T("1024_mode"), false),
+          const SizedBox(height: 15),
+          _buildModeButton(T("2048_mode"), true),
+          const SizedBox(height: 40),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _pageController.jumpToPage(0), // Back to welcome
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 45),
+                    side: const BorderSide(color: AppTheme.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: const Text("返回 / Back"),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLengthSelectionPage() {
+    return _buildPageLayout(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            T("select_length_prompt"),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.text,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 30),
+          _buildLengthButton(T("12_words"), 12),
+          const SizedBox(height: 15),
+          _buildLengthButton(T("18_words"), 18),
+          const SizedBox(height: 15),
+          _buildLengthButton(T("24_words"), 24),
+          const SizedBox(height: 40),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _pageController.jumpToPage(1), // Back to mode selection
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 45),
+                    side: const BorderSide(color: AppTheme.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: const Text("返回 / Back"),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 120,
+                child: ElevatedButton(
+                  onPressed: () => _pageController.jumpToPage(3), // Skip to recovery page
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 45),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("跳过"),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeButton(String text, bool is2048Mode) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () => _setMode(is2048Mode),
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(0, 50),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          backgroundColor: AppTheme.contentBackground,
+          foregroundColor: AppTheme.text,
+          side: const BorderSide(color: AppTheme.border),
+        ),
+        child: Text(text),
       ),
     );
   }
@@ -404,8 +534,8 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       child: ElevatedButton(
         onPressed: () => _startRecovery(length),
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(0, 40),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          minimumSize: const Size(0, 50),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           backgroundColor: AppTheme.contentBackground,
           foregroundColor: AppTheme.text,
@@ -491,7 +621,11 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
           Text(
             T("entered_numbers_label").replaceFirst('{numbers}', (() {
               final sorted = [..._currentWordInputs]..sort();
-              return sorted.map((e) => e.toString()).join(', ');
+              String numbersText = sorted.map((e) => e.toString()).join(', ');
+              if (_is2048Mode && _currentWordInputs.contains(2048)) {
+                numbersText += " (2048模式)";
+              }
+              return numbersText;
             })()),
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
@@ -545,7 +679,9 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
     if (_currentWordSum == 0) {
       return T("status_waiting");
     }
-    int wordIndex = _currentWordSum - 1;
+
+    int wordIndex = _currentWordSum;  // 直接使用总和作为词表索引
+
     if (_bip39Logic.wordlist != null && wordIndex >= 0 && wordIndex < _bip39Logic.wordlist!.length) {
       String word = _bip39Logic.wordlist![wordIndex];
       return T("status_valid_word").replaceFirst('{sum}', _currentWordSum.toString()).replaceFirst('{index}', (wordIndex + 1).toString()).replaceFirst('{word}', word);
@@ -553,6 +689,7 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       return T("status_invalid_index").replaceFirst('{sum}', _currentWordSum.toString());
     }
   }
+
 
   void _addNumber() {
     String numStr = _numberEntryController.text.trim();
@@ -604,7 +741,9 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
       return;
     }
 
-    int wordIndex = _currentWordSum - 1;
+    // 直接使用累加和作为词表索引（PDF文档中的索引直接对应词表索引）
+    int wordIndex = _currentWordSum;
+
     if (_bip39Logic.wordlist != null && wordIndex >= 0 && wordIndex < _bip39Logic.wordlist!.length) {
       String word = _bip39Logic.wordlist![wordIndex];
       setState(() {
@@ -661,8 +800,8 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
   }
 
   void _showFinalResult() {
-    // Navigate to result page
-    _pageController.jumpToPage(2);
+    // Navigate to result page (page 4)
+    _pageController.jumpToPage(4);
   }
 
   Widget _buildResultPage() {
@@ -722,12 +861,14 @@ class _Bip39RecoveryScreenState extends State<Bip39RecoveryScreen> {
                   _recoveredWords = [];
                   _inputsHistory.clear();
                   _resetCurrentWord();
+                  _is2048Mode = false;
+                  _bip39Logic.setMode(false);
                 });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
-                minimumSize: const Size(0, 40),
+                minimumSize: const Size(0, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               ),
               child: Text(T("restart_button")),
