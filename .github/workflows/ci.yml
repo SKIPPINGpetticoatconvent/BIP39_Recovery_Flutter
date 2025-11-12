@@ -18,7 +18,6 @@ on:
       - main
 
 jobs:
-  # ... [build-android, build-windows, build-linux jobs 保持不变] ...
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -26,19 +25,45 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: 设置 Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
+
+      - name: 缓存 Flutter 依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ${{ github.workspace }}/.flutter-plugins
+            ${{ github.workspace }}/.dart_tool
+          key: flutter-android-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            flutter-android-
+
+      - name: 缓存 Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: 安装依赖
         run: flutter pub get
+
       - name: 设置 Java
         uses: actions/setup-java@v4
         with:
           java-version: "17"
           distribution: "adopt"
+
       - name: 构建 Android APK
         run: flutter build apk --release
+
       - name: 上传 Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -53,21 +78,38 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: 设置 Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
+
+      - name: 缓存 Flutter 依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\Pub\Cache
+            ${{ github.workspace }}\.flutter-plugins
+            ${{ github.workspace }}\.dart_tool
+          key: flutter-windows-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            flutter-windows-
+
       - name: 安装依赖
         run: flutter pub get
+
       - name: 启用 Windows 桌面支持
         run: flutter config --enable-windows-desktop
+
       - name: 构建 Windows 可执行文件
         run: flutter build windows --release
+
       - name: 创建 Windows 压缩包
         run: |
           cd build/windows/x64/runner/Release
           Compress-Archive -Path * -DestinationPath ../../../../../windows-release.zip
         shell: powershell
+
       - name: 上传 Windows 可执行文件
         uses: actions/upload-artifact@v4
         with:
@@ -84,39 +126,49 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: 安装 Linux 依赖 (for Ubuntu 20.04)
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y \
             curl jq bash clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev unzip git build-essential
         shell: bash
+
       - name: 设置 Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
+
       - name: 将 Flutter SDK 目录标记为安全
         run: git config --global --add safe.directory "$FLUTTER_ROOT"
         shell: bash
+
       - name: 缓存 Flutter 依赖
         uses: actions/cache@v4
         with:
           path: |
             /root/.pub-cache
-            ${{ github.workspace }}/flutter
+            ${{ github.workspace }}/.flutter-plugins
+            ${{ github.workspace }}/.dart_tool
           key: flutter-linux-2004-${{ hashFiles('**/pubspec.yaml') }}
           restore-keys: |
             flutter-linux-2004-
+
       - name: 安装依赖
         run: flutter pub get
+
       - name: 启用 Linux 桌面支持
         run: flutter config --enable-linux-desktop
+
       - name: 构建 Linux 可执行文件
         run: flutter build linux --release
+
       - name: 创建 Linux 压缩包
         run: |
           cd build/linux/x64/release/bundle
           tar -czf ../../../../../linux-release.tar.gz .
         shell: bash
+
       - name: 上传 Linux 可执行文件
         uses: actions/upload-artifact@v4
         with:
@@ -133,8 +185,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # 不再需要 PAT token，默认的 GITHUB_TOKEN 已被授予权限
-          # token: ${{ secrets.PAT_TOKEN }} # <--- 移除此行
 
       - name: 自动增加版本号
         id: version_bumper
@@ -170,13 +220,14 @@ jobs:
             echo "已成功推送版本更新。"
           fi
 
-      # ... [后续的下载、日志生成、创建 Release 等步骤保持不变] ...
       - name: 下载所有工件
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
       - name: 列出下载的文件 (调试用)
         run: find artifacts -type f -ls
+
       - name: 检查是否已存在该版本的 release
         id: check_release
         run: |
@@ -189,6 +240,7 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 获取上一个 release 标签
         id: get_previous_tag
         if: steps.check_release.outputs.skip_release == 'false'
@@ -201,12 +253,12 @@ jobs:
           echo "上一个标签: $PREVIOUS_TAG"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 生成更新日志
         id: generate_changelog
         if: steps.check_release.outputs.skip_release == 'false'
         run: |
           echo "## 🚀 更新内容" > CHANGELOG.md
-          # ... (省略具体日志生成脚本，与之前相同) ...
           echo "" >> CHANGELOG.md
           echo "### ✨ 新功能" >> CHANGELOG.md
           git log ${{ env.PREVIOUS_TAG }}..HEAD --oneline --grep="feat\|add\|new" --grep="功能\|新增" | sed 's/^/- /' >> CHANGELOG.md || echo "- 无新功能更新" >> CHANGELOG.md
@@ -220,6 +272,7 @@ jobs:
           echo "- Commit: $(git rev-parse --short HEAD)" >> CHANGELOG.md
           echo "- Flutter 版本: $(flutter --version | head -n 1)" >> CHANGELOG.md
           cat CHANGELOG.md
+
       - name: 创建并上传发行版
         if: steps.check_release.outputs.skip_release == 'false'
         uses: softprops/action-gh-release@v2
@@ -235,6 +288,7 @@ jobs:
             artifacts/linux-executable/linux-release.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: 发布成功通知
         if: steps.check_release.outputs.skip_release == 'false'
         run: |
