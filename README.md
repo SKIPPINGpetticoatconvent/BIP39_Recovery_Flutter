@@ -82,4 +82,4 @@ python Demo/bip39_recovery.py
 
 ## License
 
-MIT
+[MIT](LICENSE)
